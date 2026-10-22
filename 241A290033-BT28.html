@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GAME kiểm tra tốc độ phản xạ click chuột</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #fdf9fb;
+      color: #0f172a;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 30px 15px;
+    }
+    h1 {
+      font-size: 28px;
+      margin-bottom: 6px;
+      color: #bd3193;
+    }
+    .subtitle {
+      color: #64748b;
+      font-size: 14px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .info-bar {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .info-box {
+      background: #fff;
+      border: 1px solid rgba(15,23,42,.08);
+      border-radius: 12px;
+      padding: 10px 24px;
+      text-align: center;
+      min-width: 120px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+    .info-box .label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: #64748b;
+      font-weight: 600;
+    }
+    .info-box .value {
+      font-size: 28px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+    #score  { color: #bd3193; }
+    #timer  { color: #0891b2; }
+    #timer.warning { color: #dc2626; animation: shake .4s infinite; }
+
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      25% { transform: translateX(-3px); }
+      75% { transform: translateX(3px); }
+    }
+
+    .arena-wrapper {
+      position: relative;   
+      width: 600px;
+      height: 400px;
+      max-width: 100%;
+    }
+
+    #arena {
+      position: absolute;   
+      top: 0;
+      left: 0;
+      width: 600px;         
+      height: 400px;        
+      background:
+        radial-gradient(circle at 20% 20%, rgba(8,145,178,.15), transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(189,49,147,.18), transparent 50%),
+        linear-gradient(135deg, #1a1030 0%, #2d1b4e 50%, #1a1030 100%);
+      border: 2px solid #bd3193;
+      border-radius: 14px;
+      overflow: hidden;
+      cursor: crosshair;
+      box-shadow: 0 10px 30px rgba(189,49,147,.25);
+    }
+    /* Họa tiết chấm nền */
+    #arena::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(rgba(255,255,255,.08) 1px, transparent 1px);
+      background-size: 24px 24px;
+      pointer-events: none;
+    }
+
+    .target {
+      position: absolute;  
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 32% 30%, #ff7ad1, #bd3193 65%, #7a1f60);
+      box-shadow: 0 4px 14px rgba(189,49,147,.5);
+      cursor: pointer;
+      z-index: 5;
+      animation: pop .18s ease-out;
+    }
+    .target::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 2px solid #bd3193;
+      animation: pulse 1s ease-out infinite;
+    }
+    @keyframes pop {
+      0%   { transform: scale(0); }
+      70%  { transform: scale(1.15); }
+      100% { transform: scale(1); }
+    }
+    @keyframes pulse {
+      0%   { transform: scale(1); opacity: .6; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      text-align: center;
+    }
+    #placeholder { color: #fff; pointer-events: none; }
+    #placeholder .big {
+      width: 60px; height: 60px; border-radius: 50%;
+      background: rgba(189,49,147,.25);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; margin-bottom: 12px;
+    }
+    #placeholder p.title { font-size: 18px; font-weight: 700; }
+    #placeholder p.hint  { font-size: 13px; color: rgba(255,255,255,.55); margin-top: 6px; }
+
+    #gameover {
+      display: none;
+      background: rgba(15,10,30,.8);
+      backdrop-filter: blur(4px);
+    }
+    #gameover .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 26px 34px;
+      box-shadow: 0 20px 50px rgba(0,0,0,.4);
+      animation: cardIn .35s ease;
+    }
+    @keyframes cardIn {
+      from { opacity: 0; transform: scale(.85); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    #gameover h2 { font-size: 20px; margin-bottom: 10px; }
+    #finalScore {
+      font-size: 48px; font-weight: 800; color: #bd3193;
+      line-height: 1; display: block; margin-bottom: 4px;
+    }
+    #gameover .desc { color: #64748b; font-size: 13px; margin-bottom: 16px; }
+
+    #startBtn {
+      margin-top: 20px;
+      padding: 14px 40px;
+      font-size: 17px;
+      font-weight: 700;
+      font-family: inherit;
+      color: #fff;
+      background: #bd3193;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 6px 18px rgba(189,49,147,.35);
+      transition: transform .12s, box-shadow .2s;
+    }
+    #startBtn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px rgba(189,49,147,.45);
+    }
+    #startBtn:disabled { opacity: .5; cursor: not-allowed; }
+
+    #playAgain {
+      margin-top: 6px;
+      padding: 10px 26px;
+      font-size: 15px; font-weight: 700; font-family: inherit;
+      color: #fff; background: #0891b2; border: none;
+      border-radius: 10px; cursor: pointer;
+    }
+    #missInfo { margin-top: 10px; color: #64748b; font-size: 12px; min-height: 16px; }
+
+    .float-text {
+      position: absolute;
+      pointer-events: none;
+      font-weight: 800;
+      font-size: 20px;
+      z-index: 10;
+      animation: floatUp .6s ease-out forwards;
+    }
+    @keyframes floatUp {
+      0%   { opacity: 1; transform: translate(-50%, 0) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -46px) scale(1.4); }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Kiểm tra tốc độ phản xạ</h1>
+  <p class="subtitle">Click nhanh vào vòng tròn màu hồng trước khi nó biến mất. Bạn có 30 giây.</p>
+
+  <!-- ===== THÔNG TIN HIỂN THỊ ===== -->
+  <div class="info-bar">
+    <div class="info-box">
+      <div class="label">Điểm số</div>
+      <div class="value" id="score">0</div>
+    </div>
+    <div class="info-box">
+      <div class="label">Thời gian</div>
+      <div class="value" id="timer">30s</div>
+    </div>
+  </div>
+
+  <div class="arena-wrapper">
+    <div id="arena">
+      <div class="overlay" id="placeholder">
+        <div class="big">◎</div>
+        <p class="title">Nhấn nút "Bắt đầu trò chơi" để chơi</p>
+        <p class="hint">Mục tiêu tự đổi vị trí mỗi 1 giây</p>
+      </div>
+
+      <div class="overlay" id="gameover">
+        <div class="card">
+          <h2>Hết giờ!</h2>
+          <span id="finalScore">0</span>
+          <p class="desc">Tổng số điểm đạt được</p>
+          <button id="playAgain">Chơi lại</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <button id="startBtn">Bắt đầu trò chơi</button>
+  <p id="missInfo"></p>
+
+  <script>
+    var GAME_DURATION = 30;          
+    var TARGET_SIZE   = 36;          
+    var ARENA_W       = 600;         
+    var ARENA_H       = 400;         
+
+    /* Lấy các phần tử DOM */
+    var arena      = document.getElementById('arena');
+    var scoreEl    = document.getElementById('score');
+    var timerEl    = document.getElementById('timer');
+    var startBtn   = document.getElementById('startBtn');
+    var placeholder= document.getElementById('placeholder');
+    var gameover   = document.getElementById('gameover');
+    var finalScore = document.getElementById('finalScore');
+    var playAgain  = document.getElementById('playAgain');
+    var missInfo   = document.getElementById('missInfo');
+
+    var score = 0;            
+    var timeLeft = GAME_DURATION; 
+    var misses = 0;           
+    var isPlaying = false;    
+    var target = null;        
+    var countdownTimer = null;
+    var moveTimer = null;     
+
+    function randomPosition() {
+      return {
+        top:  Math.floor(Math.random() * (ARENA_H - TARGET_SIZE - 8)) + 4,
+        left: Math.floor(Math.random() * (ARENA_W - TARGET_SIZE - 8)) + 4
+      };
+    }
+
+    function spawnTarget() {
+      if (target) target.remove();          // xóa mục tiêu cũ (nếu có)
+      target = document.createElement('div');
+      target.className = 'target';
+      var pos = randomPosition();
+      target.style.top  = pos.top + 'px';   // đặt tọa độ top ngẫu nhiên
+      target.style.left = pos.left + 'px';  // đặt tọa độ left ngẫu nhiên
+      target.addEventListener('click', onTargetClick);
+      arena.appendChild(target);
+    }
+
+    function moveTarget() {
+      if (!target) return;
+      var pos = randomPosition();
+      target.style.top  = pos.top + 'px';
+      target.style.left = pos.left + 'px';
+      // chạy lại animation "nảy"
+      target.style.animation = 'none';
+      void target.offsetWidth;
+      target.style.animation = '';
+    }
+    function resetMoveTimer() {
+      if (moveTimer) clearInterval(moveTimer);
+      moveTimer = setInterval(function () {
+        if (isPlaying) moveTarget();  
+      }, 1000);
+    }
+    function showFloat(x, y, text, color) {
+      var f = document.createElement('div');
+      f.className = 'float-text';
+      f.textContent = text;
+      f.style.color = color;
+      f.style.left = x + 'px';
+      f.style.top  = y + 'px';
+      arena.appendChild(f);
+      setTimeout(function () { f.remove(); }, 650);
+    }
+
+    function onTargetClick(e) {
+      e.stopPropagation();              
+      if (!isPlaying) return;
+      score++;                          
+      scoreEl.textContent = score;
+      var rect = arena.getBoundingClientRect();
+      showFloat(e.clientX - rect.left, e.clientY - rect.top - 10, '+1', '#4ade80');
+      moveTarget();                      
+      resetMoveTimer();                  
+    }
+
+    function onArenaClick(e) {
+      if (!isPlaying) return;
+      misses++;
+      missInfo.textContent = 'Số lần click trượt: ' + misses;
+      var rect = arena.getBoundingClientRect();
+      showFloat(e.clientX - rect.left, e.clientY - rect.top - 10, 'Trượt', '#f87171');
+    }
+
+  
+    function tick() {
+      timeLeft--;
+      timerEl.textContent = timeLeft + 's';
+      if (timeLeft <= 10) timerEl.classList.add('warning'); 
+      if (timeLeft <= 0) endGame();                         
+    }
+    function startGame() {
+      // reset trạng thái
+      score = 0;
+      timeLeft = GAME_DURATION;
+      misses = 0;
+      isPlaying = true;
+      scoreEl.textContent = '0';
+      timerEl.textContent = timeLeft + 's';
+      timerEl.classList.remove('warning');
+      missInfo.textContent = '';
+      placeholder.style.display = 'none';  
+      gameover.style.display = 'none';    
+      startBtn.disabled = true;             
+      startBtn.textContent = 'Đang chơi...';
+
+      spawnTarget();                      
+      resetMoveTimer();                     
+      countdownTimer = setInterval(tick, 1000); 
+    }
+
+    function endGame() {
+      isPlaying = false;                              
+      if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+      if (moveTimer)      { clearInterval(moveTimer);      moveTimer = null; }
+      if (target)         { target.remove(); target = null; } 
+
+      startBtn.disabled = false;
+      startBtn.textContent = 'Bắt đầu trò chơi';
+      timerEl.textContent = '0s';
+
+      finalScore.textContent = score;
+      gameover.style.display = 'flex';
+    }
+
+    startBtn.addEventListener('click', startGame);
+    playAgain.addEventListener('click', startGame);
+    arena.addEventListener('click', onArenaClick);
+  </script>
+</body>
+</html>
